@@ -16,17 +16,19 @@ workflows:
       - name: Disable Swift Package Manager
         script: flutter config --no-enable-swift-package-manager
       # NOT: Apple Developer hesabı açılıp App Store Connect API key eklenene kadar
-      # imzalama yapılamıyor, bu yüzden --no-codesign ile sadece derlemenin
-      # sorunsuz geçtiğini doğruluyoruz. Hesap hazır olunca:
+      # gerçek cihaz için imzalama yapılamıyor (--no-codesign bile "Development
+      # Team" ister). Bu yüzden şimdilik SİMÜLATÖR hedefi için derliyoruz —
+      # imza istemiyor, kodun/paketlerin sorunsuz derlendiğini yine de kanıtlıyor.
+      # Hesap hazır olunca:
       #   1. Codemagic > Team settings > Code signing identities içine
       #      App Store Connect API key ekleyin.
       #   2. Aşağıdaki "ios_signing" bloğunu ekleyip bu scripti
       #      "flutter build ipa --release" ile değiştirin.
-      #   3. "artifacts" ve "publishing" bloklarını aktif edin.
-      - name: Flutter build (unsigned, derleme kontrolü)
-        script: flutter build ios --release --no-codesign
+      #   3. "artifacts" yolunu "build/ios/ipa/*.ipa" yapıp "publishing" bloğunu aktif edin.
+      - name: Flutter build (simülatör, derleme kontrolü)
+        script: flutter build ios --debug --simulator
     artifacts:
-      - build/ios/iphoneos/*.app
+      - build/ios/iphonesimulator/*.app
 
     # Apple Developer hesabı hazır olunca bu bloğu ekleyin:
     # ios_signing:
