@@ -108,25 +108,11 @@ class _Header extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: AppColors.flameGradient,
-                ).createShader(bounds),
-                child: const Icon(Icons.local_fire_department_rounded, color: Colors.white, size: 22),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'KIVIL',
-                style: GoogleFonts.manrope(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 3,
-                  fontSize: 16,
-                ),
-              ),
-            ],
+          Image.asset(
+            'assets/images/logo_wordmark.png',
+            height: 22,
+            fit: BoxFit.contain,
+            alignment: Alignment.centerLeft,
           ),
           const SizedBox(height: 22),
           Text(

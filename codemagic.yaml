@@ -10,6 +10,11 @@ workflows:
     scripts:
       - name: Get Flutter packages
         script: flutter packages pub get
+      # flutter_native_splash gibi bazı paketlerle Flutter'ın yeni (deneysel)
+      # Swift Package Manager entegrasyonu çakışıyor — projede kullanmadığımız
+      # için kapatıyoruz.
+      - name: Disable Swift Package Manager
+        script: flutter config --no-enable-swift-package-manager
       # NOT: Apple Developer hesabı açılıp App Store Connect API key eklenene kadar
       # imzalama yapılamıyor, bu yüzden --no-codesign ile sadece derlemenin
       # sorunsuz geçtiğini doğruluyoruz. Hesap hazır olunca:
