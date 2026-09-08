@@ -1,0 +1,40 @@
+workflows:
+  ios-workflow:
+    name: Kıvıl iOS
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Get Flutter packages
+        script: flutter packages pub get
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios && pod install
+      # NOT: Apple Developer hesabı açılıp App Store Connect API key eklenene kadar
+      # imzalama yapılamıyor, bu yüzden --no-codesign ile sadece derlemenin
+      # sorunsuz geçtiğini doğruluyoruz. Hesap hazır olunca:
+      #   1. Codemagic > Team settings > Code signing identities içine
+      #      App Store Connect API key ekleyin.
+      #   2. Aşağıdaki "ios_signing" bloğunu ekleyip bu scripti
+      #      "flutter build ipa --release" ile değiştirin.
+      #   3. "artifacts" ve "publishing" bloklarını aktif edin.
+      - name: Flutter build (unsigned, derleme kontrolü)
+        script: flutter build ios --release --no-codesign
+    artifacts:
+      - build/ios/iphoneos/*.app
+
+    # Apple Developer hesabı hazır olunca bu bloğu ekleyin:
+    # ios_signing:
+    #   distribution_type: app_store
+    #   bundle_identifier: com.kivil.kivilApp
+    #
+    # Ve publishing bloğunu ekleyin:
+    # publishing:
+    #   app_store_connect:
+    #     api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+    #     key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+    #     issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+    #     submit_to_testflight: true
