@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -5,6 +7,8 @@ import '../models/category.dart';
 import '../models/content_item.dart';
 import '../services/content_service.dart';
 import '../theme/app_colors.dart';
+import 'content_detail_screen.dart';
+import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,6 +22,10 @@ class _HomeScreenState extends State<HomeScreen> {
   late Future<List<ContentItem>> _contentFuture;
   int? _selectedCategoryId;
 
+  bool _isSearching = false;
+  final _searchController = TextEditingController();
+  Timer? _searchDebounce;
+
   @override
   void initState() {
     super.initState();
@@ -25,10 +33,39 @@ class _HomeScreenState extends State<HomeScreen> {
     _contentFuture = ContentService.fetchContent();
   }
 
-  void _selectCategory(int? categoryId) {
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _refetchContent() {
     setState(() {
-      _selectedCategoryId = categoryId;
-      _contentFuture = ContentService.fetchContent(categoryId: categoryId);
+      _contentFuture = ContentService.fetchContent(
+        categoryId: _selectedCategoryId,
+        search: _searchController.text,
+      );
+    });
+  }
+
+  void _selectCategory(int? categoryId) {
+    _selectedCategoryId = categoryId;
+    _refetchContent();
+  }
+
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 400), _refetchContent);
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearching = !_isSearching;
+      if (!_isSearching) {
+        _searchController.clear();
+        _refetchContent();
+      }
     });
   }
 
@@ -41,13 +78,26 @@ class _HomeScreenState extends State<HomeScreen> {
           onRefresh: () async {
             setState(() {
               _categoriesFuture = ContentService.fetchCategories();
-              _contentFuture = ContentService.fetchContent(categoryId: _selectedCategoryId);
+              _contentFuture = ContentService.fetchContent(
+                categoryId: _selectedCategoryId,
+                search: _searchController.text,
+              );
             });
             await Future.wait([_categoriesFuture, _contentFuture]);
           },
           child: CustomScrollView(
             slivers: [
-              SliverToBoxAdapter(child: _Header()),
+              SliverToBoxAdapter(
+                child: _Header(
+                  isSearching: _isSearching,
+                  searchController: _searchController,
+                  onToggleSearch: _toggleSearch,
+                  onSearchChanged: _onSearchChanged,
+                  onLoginTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  ),
+                ),
+              ),
               SliverToBoxAdapter(
                 child: FutureBuilder<List<Category>>(
                   future: _categoriesFuture,
@@ -76,7 +126,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     return SliverFillRemaining(
                       child: Center(
                         child: Text(
-                          'Henüz içerik eklenmedi.',
+                          _searchController.text.isNotEmpty
+                              ? 'Aramanızla eşleşen içerik bulunamadı.'
+                              : 'Henüz içerik eklenmedi.',
                           style: GoogleFonts.manrope(color: AppColors.textMuted),
                         ),
                       ),
@@ -101,6 +153,20 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _Header extends StatelessWidget {
+  const _Header({
+    required this.isSearching,
+    required this.searchController,
+    required this.onToggleSearch,
+    required this.onSearchChanged,
+    required this.onLoginTap,
+  });
+
+  final bool isSearching;
+  final TextEditingController searchController;
+  final VoidCallback onToggleSearch;
+  final ValueChanged<String> onSearchChanged;
+  final VoidCallback onLoginTap;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -108,26 +174,65 @@ class _Header extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Image.asset(
-            'assets/images/logo_wordmark.png',
-            height: 22,
-            fit: BoxFit.contain,
-            alignment: Alignment.centerLeft,
+          Row(
+            children: [
+              Expanded(
+                child: Image.asset(
+                  'assets/images/logo_wordmark.png',
+                  height: 22,
+                  fit: BoxFit.contain,
+                  alignment: Alignment.centerLeft,
+                ),
+              ),
+              IconButton(
+                onPressed: onToggleSearch,
+                icon: Icon(
+                  isSearching ? Icons.close_rounded : Icons.search_rounded,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              IconButton(
+                onPressed: onLoginTap,
+                icon: const Icon(Icons.person_outline_rounded, color: AppColors.textPrimary),
+              ),
+            ],
           ),
-          const SizedBox(height: 22),
-          Text(
-            'Bugün ne keşfetmek istersin?',
-            style: GoogleFonts.cormorantGaramond(
-              color: AppColors.textPrimary,
-              fontSize: 28,
-              fontWeight: FontWeight.w600,
+          if (isSearching) ...[
+            const SizedBox(height: 4),
+            TextField(
+              controller: searchController,
+              onChanged: onSearchChanged,
+              autofocus: true,
+              style: GoogleFonts.manrope(color: AppColors.textPrimary),
+              cursorColor: AppColors.textGold,
+              decoration: InputDecoration(
+                hintText: 'İçerik ara...',
+                hintStyle: GoogleFonts.manrope(color: AppColors.textMuted),
+                filled: true,
+                fillColor: AppColors.surface,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Hayalindeki deneyimi seç, sana özel önerilerle tanış.',
-            style: GoogleFonts.manrope(color: AppColors.textMuted, fontSize: 13.5),
-          ),
+          ] else ...[
+            const SizedBox(height: 22),
+            Text(
+              'Bugün ne keşfetmek istersin?',
+              style: GoogleFonts.cormorantGaramond(
+                color: AppColors.textPrimary,
+                fontSize: 28,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Hayalindeki deneyimi seç, sana özel önerilerle tanış.',
+              style: GoogleFonts.manrope(color: AppColors.textMuted, fontSize: 13.5),
+            ),
+          ],
         ],
       ),
     );
@@ -256,67 +361,74 @@ class _ContentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 120,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-      ),
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(18),
       clipBehavior: Clip.antiAlias,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            width: 96,
-            child: item.imageUrl != null
-                ? Image.network(
-                    item.imageUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _imageFallback(),
-                  )
-                : _imageFallback(),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    item.category.name,
-                    style: GoogleFonts.manrope(
-                      fontSize: 11,
-                      color: AppColors.textGold,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.manrope(
-                      fontSize: 15,
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => ContentDetailScreen(contentId: item.id)),
+        ),
+        child: SizedBox(
+          height: 120,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: 96,
+                child: item.imageUrl != null
+                    ? Image.network(
+                        item.imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _imageFallback(),
+                      )
+                    : _imageFallback(),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (item.isNew) _Badge(label: 'YENİ', color: const Color(0xFFE0245E)),
-                      if (item.isNew && item.isPremium) const SizedBox(width: 6),
-                      if (item.isPremium)
-                        _Badge(label: 'ÜYELERE ÖZEL', color: AppColors.textGold, icon: Icons.lock_rounded),
+                      Text(
+                        item.category.name,
+                        style: GoogleFonts.manrope(
+                          fontSize: 11,
+                          color: AppColors.textGold,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.manrope(
+                          fontSize: 15,
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          if (item.isNew) _Badge(label: 'YENİ', color: const Color(0xFFE0245E)),
+                          if (item.isPremium)
+                            _Badge(label: 'ÜYELERE ÖZEL', color: AppColors.textGold, icon: Icons.lock_rounded),
+                          if (item.difficulty != null) _Badge(label: item.difficulty!, color: AppColors.textMuted),
+                        ],
+                      ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

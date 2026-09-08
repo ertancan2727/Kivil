@@ -37,6 +37,8 @@ dependencies:
   google_fonts: ^6.2.1
   http: ^1.2.2
   google_mobile_ads: ^5.2.0
+  url_launcher: ^6.3.1
+  flutter_widget_from_html: ^0.15.2
 
 dev_dependencies:
   flutter_test:
@@ -80,6 +82,7 @@ flutter:
     - assets/images/welcome_bg.png
     - assets/images/logo.png
     - assets/images/logo_wordmark.png
+    - assets/images/stage.jpg
 
   # To add assets to your application, add an assets section, like this:
   # assets:

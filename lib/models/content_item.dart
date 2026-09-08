@@ -8,6 +8,7 @@ class ContentItem {
     required this.category,
     required this.isNew,
     required this.isPremium,
+    this.difficulty,
   });
 
   final int id;
@@ -16,6 +17,7 @@ class ContentItem {
   final Category category;
   final bool isNew;
   final bool isPremium;
+  final String? difficulty;
 
   factory ContentItem.fromJson(Map<String, dynamic> json) {
     return ContentItem(
@@ -25,6 +27,7 @@ class ContentItem {
       category: Category.fromJson(json['category'] as Map<String, dynamic>),
       isNew: json['isNew'] as bool,
       isPremium: json['isPremium'] as bool,
+      difficulty: json['difficulty'] as String?,
     );
   }
 }
